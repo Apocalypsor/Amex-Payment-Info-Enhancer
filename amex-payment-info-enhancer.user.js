@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amex Payment Info Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      0.0.2
+// @version      5.0.0
 // @description  Shows last 5 digits of Amex cards
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
