@@ -41,15 +41,22 @@ jobs:
       - name: Build with version
         run: VERSION=${{ steps.get_version.outputs.VERSION }} bun run build
 
-      - name: Switch to release branch
+      - name: Commit and push to release branch
         run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Fetch release branch if exists
           git fetch origin release:release 2>/dev/null || true
+
+          # Switch to release branch (create if doesn't exist)
           git checkout -B release
 
-      - name: Commit and push to release branch
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Release v${{ steps.get_version.outputs.VERSION }}"
-          branch: release
-          push_options: "--force"
-          file_pattern: "package.json dist/amex-payment-info-enhancer.user.js"
+          # Add updated files
+          git add package.json dist/amex-payment-info-enhancer.user.js
+
+          # Commit changes
+          git commit -m "Release v${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
+
+          # Push to release branch
+          git push origin release --force
