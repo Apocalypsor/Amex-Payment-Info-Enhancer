@@ -41,22 +41,14 @@ jobs:
       - name: Build with version
         run: VERSION=${{ steps.get_version.outputs.VERSION }} bun run build
 
-      - name: Commit and push to release branch
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-
-          # Fetch release branch if exists
-          git fetch origin release:release 2>/dev/null || true
-
-          # Switch to release branch (create if doesn't exist)
-          git checkout -B release
-
-          # Add updated files
-          git add package.json dist/amex-payment-info-enhancer.user.js
-
-          # Commit changes
-          git commit -m "Release v${{ steps.get_version.outputs.VERSION }}" || echo "No changes to commit"
-
-          # Push to release branch
-          git push origin release --force
+      - name: Deploy to release branch
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: dist
+          publish_branch: release
+          force_orphan: false
+          keep_files: false
+          commit_message: "Release v${{ steps.get_version.outputs.VERSION }}"
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
