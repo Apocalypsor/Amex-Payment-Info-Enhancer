@@ -49,18 +49,3 @@ jobs:
           create_branch: true
           push_options: "--force"
           file_pattern: "package.json dist/amex-payment-info-enhancer.user.js"
-
-      - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/amex-payment-info-enhancer.user.js
-          body: |
-            ## Release v${{ steps.get_version.outputs.VERSION }}
-
-            ### Installation
-            Click the file below to install or update the userscript.
-
-            ### Changes
-            See the commit history for details.
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
