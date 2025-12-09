@@ -1,0 +1,66 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Get version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Update package.json version
+        run: |
+          bun run -e "
+            const pkg = require('./package.json');
+            pkg.version = '${{ steps.get_version.outputs.VERSION }}';
+            await Bun.write('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Build with version
+        run: VERSION=${{ steps.get_version.outputs.VERSION }} bun run build
+
+      - name: Commit and push to release branch
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "Release v${{ steps.get_version.outputs.VERSION }}"
+          branch: release
+          create_branch: true
+          push_options: "--force"
+          file_pattern: "package.json dist/amex-payment-info-enhancer.user.js"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/amex-payment-info-enhancer.user.js
+          body: |
+            ## Release v${{ steps.get_version.outputs.VERSION }}
+
+            ### Installation
+            Click the file below to install or update the userscript.
+
+            ### Changes
+            See the commit history for details.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

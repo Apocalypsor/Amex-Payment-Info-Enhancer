@@ -1,28 +1,19 @@
 #!/usr/bin/env bun
 
-const userscriptHeader = `// ==UserScript==
-// @name         Amex Payment Info Enhancer
-// @namespace    http://tampermonkey.net/
-// @version      4.6
-// @description  Enhance payment info on Amex Travel, Uber Eats, Resy, and Saks Fifth Avenue.
-// @author       Apocalypsor
-// @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
-// @match        https://www.ubereats.com/*
-// @match        https://resy.com/*
-// @match        https://widgets.resy.com/*
-// @match        https://www.saksfifthavenue.com/*
-// @grant        none
-// @run-at       document-start
-// @downloadURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
-// @updateURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
-// ==/UserScript==
-
-`;
-
 async function build() {
   console.log("Building userscript...");
 
   try {
+    // Read userscript header template
+    const headerTemplate = await Bun.file("./src/userscript-header.txt").text();
+
+    // Get version from package.json or environment variable (for CI)
+    const packageJson = await Bun.file("./package.json").json();
+    const version = process.env.VERSION || packageJson.version;
+
+    // Replace version placeholder
+    const userscriptHeader = headerTemplate.replace("{{VERSION}}", version);
+
     // Build with Bun
     const result = await Bun.build({
       entrypoints: ["./src/index.ts"],
@@ -55,6 +46,7 @@ ${code}
     await Bun.write(distPath, finalScript);
 
     console.log(`✓ Build complete: ${distPath}`);
+    console.log(`  Version: ${version}`);
     console.log(`  Size: ${(finalScript.length / 1024).toFixed(2)} KB`);
   } catch (error) {
     console.error("Build failed:", error);
