@@ -11,7 +11,7 @@
 // @match        https://www.saksfifthavenue.com/*
 // @grant        none
 // @run-at       document-start
-// @downloadURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
-// @updateURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
+// @downloadURL https://raw.githubusercontent.com/Apocalypsor/Amex-Payment-Info-Enhancer/refs/heads/release/amex-payment-info-enhancer.user.js
+// @updateURL https://raw.githubusercontent.com/Apocalypsor/Amex-Payment-Info-Enhancer/refs/heads/release/amex-payment-info-enhancer.user.js
 // ==/UserScript==
 

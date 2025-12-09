@@ -52,3 +52,30 @@ jobs:
           commit_message: "Release v${{ steps.get_version.outputs.VERSION }}"
           user_name: "github-actions[bot]"
           user_email: "github-actions[bot]@users.noreply.github.com"
+
+      - name: Generate release notes
+        id: release_notes
+        run: |
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "## 🎉 Release v${{ steps.get_version.outputs.VERSION }}" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 📦 Installation" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "Install or update the userscript by clicking:" >> $GITHUB_OUTPUT
+          echo "- [amex-payment-info-enhancer.user.js](https://github.com/${{ github.repository }}/releases/download/v${{ steps.get_version.outputs.VERSION }}/amex-payment-info-enhancer.user.js)" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "Or install from the [release branch](https://github.com/${{ github.repository }}/blob/release/amex-payment-info-enhancer.user.js)." >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 📝 Changes" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          git log $(git describe --tags --abbrev=0 HEAD^)..HEAD --pretty=format:"- %s (%h)" >> $GITHUB_OUTPUT || echo "- Initial release" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          files: dist/amex-payment-info-enhancer.user.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
