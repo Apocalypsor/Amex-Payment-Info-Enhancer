@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amex Payment Info Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      0.0.1
+// @version      0.0.2
 // @description  Shows last 5 digits of Amex cards
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
@@ -11,8 +11,8 @@
 // @match        https://www.saksfifthavenue.com/*
 // @grant        none
 // @run-at       document-start
-// @downloadURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
-// @updateURL https://git.dov.moe/dov/Scripts/raw/branch/main/UserScript/amex-payment-info-enhancer.user.js
+// @downloadURL https://raw.githubusercontent.com/Apocalypsor/Amex-Payment-Info-Enhancer/refs/heads/release/amex-payment-info-enhancer.user.js
+// @updateURL https://raw.githubusercontent.com/Apocalypsor/Amex-Payment-Info-Enhancer/refs/heads/release/amex-payment-info-enhancer.user.js
 // ==/UserScript==
 
 (function () {
