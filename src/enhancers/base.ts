@@ -70,7 +70,7 @@ export abstract class SiteEnhancer {
           // Run once on load
           this.checkAndActivate();
         },
-        { once: true }
+        { once: true },
       );
     }
   }
@@ -80,17 +80,27 @@ export abstract class SiteEnhancer {
    */
   protected interceptXHR(
     urlMatcher: (url: string) => boolean,
-    onResponse: (data: any) => void
+    onResponse: (data: any) => void,
   ): void {
     const originalXHR = window.XMLHttpRequest;
-    (window.XMLHttpRequest as any) = function () {
+    (window.XMLHttpRequest as any) = () => {
       const xhr = new originalXHR();
       let url: string;
       const originalOpen = xhr.open;
 
-      xhr.open = function (method: string, requestUrl: string, ...args: any[]) {
+      xhr.open = function (
+        _method: string,
+        requestUrl: string,
+        ...rest: any[]
+      ) {
         url = requestUrl;
-        return originalOpen.apply(this, arguments as any);
+        return originalOpen.apply(this, [_method, requestUrl, ...rest] as [
+          string,
+          string | URL,
+          boolean,
+          string?,
+          string?,
+        ]);
       };
 
       const originalSend = xhr.send;
@@ -107,7 +117,10 @@ export abstract class SiteEnhancer {
             }
           });
         }
-        return originalSend.apply(this, arguments as any);
+        return originalSend.apply(
+          this,
+          args as [body?: Document | XMLHttpRequestBodyInit | null],
+        );
       };
       return xhr;
     };

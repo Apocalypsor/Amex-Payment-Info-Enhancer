@@ -1,5 +1,5 @@
-import { SiteEnhancer } from "./base";
 import type { UberApiResponse, UberCardInfo } from "../types";
+import { SiteEnhancer } from "./base";
 
 export class UberEnhancer extends SiteEnhancer {
   protected siteName = "Uber Eats";
@@ -21,7 +21,7 @@ export class UberEnhancer extends SiteEnhancer {
           this.processApiData(data);
           this.dataProcessed = true;
         }
-      }
+      },
     );
   }
 
@@ -34,11 +34,11 @@ export class UberEnhancer extends SiteEnhancer {
     }
 
     const paymentHeader = Array.from(
-      document.querySelectorAll("div, span, p")
+      document.querySelectorAll("div, span, p"),
     ).find(
       (el) =>
         el.textContent?.trim() === "Payment" ||
-        el.textContent?.trim() === "付款方式"
+        el.textContent?.trim() === "付款方式",
     );
 
     if (paymentHeader && this.dataProcessed) {
@@ -49,7 +49,7 @@ export class UberEnhancer extends SiteEnhancer {
           const cardId = label.getAttribute("for");
           if (cardId && !this.processedCardIds.has(cardId)) {
             const cardInput = document.getElementById(
-              cardId
+              cardId,
             ) as HTMLInputElement | null;
             const cardUUID = cardInput ? cardInput.value : null;
 
@@ -87,13 +87,13 @@ export class UberEnhancer extends SiteEnhancer {
   }
 
   private processApiData(data: UberApiResponse): void {
-    if (data && data.availablePaymentProfiles) {
+    if (data?.availablePaymentProfiles) {
       data.availablePaymentProfiles.forEach((profile) => {
         if (profile.uuid && profile.cardNumber && profile.cardExpiration) {
           this.cardInfo[profile.uuid] = {
             cardType: profile.cardType,
             bin: profile.cardBin,
-            last4: "••••" + profile.cardNumber,
+            last4: `••••${profile.cardNumber}`,
             expiration: profile.cardExpiration,
           };
         }

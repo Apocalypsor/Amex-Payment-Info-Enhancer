@@ -1,10 +1,10 @@
-import { SiteEnhancer } from "./base";
 import type {
-  ResyUserResponse,
-  ResyPaymentMethod,
   ResyDepositInfo,
+  ResyPaymentMethod,
   ResySearchResponse,
+  ResyUserResponse,
 } from "../types";
+import { SiteEnhancer } from "./base";
 
 export class ResyEnhancer extends SiteEnhancer {
   protected siteName = "Resy";
@@ -63,7 +63,7 @@ export class ResyEnhancer extends SiteEnhancer {
           this.paymentInfo = data.payment_methods;
           this.dataProcessed = true;
         }
-      }
+      },
     );
   }
 
@@ -75,7 +75,7 @@ export class ResyEnhancer extends SiteEnhancer {
           this.paymentInfo = data.payment_methods;
           this.dataProcessed = true;
         }
-      }
+      },
     );
   }
 
@@ -84,14 +84,14 @@ export class ResyEnhancer extends SiteEnhancer {
       (url) => url === "https://api.resy.com/3/venuesearch/search",
       (data: ResySearchResponse) => {
         this.processSearchData(data);
-      }
+      },
     );
   }
 
   private updateAccountPage(): void {
     if (this.paymentInfo && this.dataProcessed) {
       const paymentContainers = document.querySelectorAll(
-        ".AccountPaymentMethodRow"
+        ".AccountPaymentMethodRow",
       );
       if (paymentContainers.length === this.paymentInfo.length) {
         this.paymentInfo.forEach((foundPayment, index) => {
@@ -99,7 +99,7 @@ export class ResyEnhancer extends SiteEnhancer {
           if (!container) return;
 
           const cardDisplaySpan = container.querySelector(
-            ".AccountPaymentMethodRow__bullets + span"
+            ".AccountPaymentMethodRow__bullets + span",
           );
           if (
             cardDisplaySpan &&
@@ -118,13 +118,13 @@ export class ResyEnhancer extends SiteEnhancer {
     if (!this.paymentInfo || !this.dataProcessed) return;
 
     const selectElement = document.querySelector(
-      "select#payment_method"
+      "select#payment_method",
     ) as HTMLSelectElement | null;
     if (!selectElement) return;
 
     this.paymentInfo.forEach((foundPayment) => {
       const optionElement = selectElement.querySelector(
-        `option[value="${foundPayment.id}"]`
+        `option[value="${foundPayment.id}"]`,
       ) as HTMLOptionElement | null;
       if (optionElement && !optionElement.textContent?.includes("Exp:")) {
         const expMonth = String(foundPayment.exp_month).padStart(2, "0");
@@ -139,7 +139,7 @@ export class ResyEnhancer extends SiteEnhancer {
 
   private updateSearchPage(): void {
     const searchResults = document.querySelectorAll(
-      ".SearchResult.SearchResult--bordered"
+      ".SearchResult.SearchResult--bordered",
     );
 
     searchResults.forEach((result, index) => {
@@ -147,7 +147,7 @@ export class ResyEnhancer extends SiteEnhancer {
 
       const depositInfo = this.venueDeposits.get(index);
       const titleContainer = result.querySelector(
-        ".SearchResult__title--container"
+        ".SearchResult__title--container",
       );
       if (titleContainer) {
         const depositElement = document.createElement("span");
@@ -155,7 +155,7 @@ export class ResyEnhancer extends SiteEnhancer {
         depositElement.style.cssText =
           "color: #e63946; font-weight: 500; margin-left: 8px; font-size: 14px;";
 
-        if (depositInfo && depositInfo.hasDeposit) {
+        if (depositInfo?.hasDeposit) {
           depositElement.textContent = "Require Deposit";
         } else {
           depositElement.textContent = "No Deposit";
@@ -167,21 +167,17 @@ export class ResyEnhancer extends SiteEnhancer {
   }
 
   private processSearchData(data: ResySearchResponse): void {
-    if (data && data.search && data.search.hits) {
+    if (data?.search?.hits) {
       this.venueDeposits.clear();
       data.search.hits.forEach((result, index) => {
-        if (result.id && result.id.resy) {
+        if (result.id?.resy) {
           let hasDeposit = false;
           let depositFee: number | null = null;
-          if (result.availability && result.availability.templates) {
+          if (result.availability?.templates) {
             const templates = result.availability.templates;
             for (const templateId in templates) {
               const template = templates[templateId];
-              if (
-                template &&
-                template.deposit_fee &&
-                template.deposit_fee > 0
-              ) {
+              if (template?.deposit_fee && template.deposit_fee > 0) {
                 hasDeposit = true;
                 depositFee = template.deposit_fee;
                 break;

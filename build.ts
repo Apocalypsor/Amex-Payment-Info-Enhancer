@@ -28,10 +28,10 @@ async function build() {
     }
 
     // Get the built code
-    let code = await result.outputs[0]!.text();
+    let code = await result.outputs[0]?.text();
 
     // Wrap in IIFE if not already wrapped
-    if (!code.trim().startsWith("(function")) {
+    if (!code?.trim().startsWith("(function")) {
       code = `(function () {
   "use strict";
 ${code}

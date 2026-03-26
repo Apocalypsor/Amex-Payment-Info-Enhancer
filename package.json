@@ -4,12 +4,23 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "build": "bun run build.ts"
+    "build": "bun run build.ts",
+    "check": "biome check --write",
+    "typecheck": "tsc --noEmit",
+    "prepare": "husky"
   },
   "devDependencies": {
-    "@types/bun": "latest"
+    "@biomejs/biome": "2.4.9",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.4.0"
   },
   "peerDependencies": {
-    "typescript": "^5"
+    "typescript": "^5.9.3"
+  },
+  "lint-staged": {
+    "*": [
+      "biome check --no-errors-on-unmatched --files-ignore-unknown=true"
+    ]
   }
 }

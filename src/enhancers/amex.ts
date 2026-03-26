@@ -19,7 +19,7 @@ export class AmexEnhancer extends SiteEnhancer {
     if (this.processed) return; // Run only once
 
     const selectElement = document.querySelector(
-      'select[data-testid="card-payment-select-input"]'
+      'select[data-testid="card-payment-select-input"]',
     );
     if (selectElement) {
       const options = selectElement.querySelectorAll("option");

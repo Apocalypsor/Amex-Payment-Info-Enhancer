@@ -1,7 +1,7 @@
-import { UberEnhancer } from "./enhancers/uber";
-import { ResyEnhancer } from "./enhancers/resy";
 import { AmexEnhancer } from "./enhancers/amex";
+import { ResyEnhancer } from "./enhancers/resy";
 import { SaksEnhancer } from "./enhancers/saks";
+import { UberEnhancer } from "./enhancers/uber";
 
 /**
  * Initialize all site enhancers
@@ -17,7 +17,9 @@ function init(): void {
 
   // Initialize all enhancers
   // Each will only activate if shouldActivate() returns true
-  enhancers.forEach((enhancer) => enhancer.init());
+  for (const enhancer of enhancers) {
+    enhancer.init();
+  }
 }
 
 // Start the script
