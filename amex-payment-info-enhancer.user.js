@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amex Payment Info Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      5.0.0
+// @version      5.0.1
 // @description  Shows last 5 digits of Amex cards
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
@@ -34,30 +34,25 @@
       }
     }
     observeDOM() {
-      if (document.body) {
-        const observer = new MutationObserver(() => this.checkAndActivate());
-        observer.observe(document.body, { childList: true, subtree: true });
+      const start = () => {
         this.checkAndActivate();
+        setInterval(() => this.checkAndActivate(), 1000);
+      };
+      if (document.body) {
+        start();
       } else {
-        document.addEventListener("DOMContentLoaded", () => {
-          const observer = new MutationObserver(() => this.checkAndActivate());
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true
-          });
-          this.checkAndActivate();
-        }, { once: true });
+        document.addEventListener("DOMContentLoaded", start, { once: true });
       }
     }
     interceptXHR(urlMatcher, onResponse) {
       const originalXHR = window.XMLHttpRequest;
-      window.XMLHttpRequest = function() {
+      window.XMLHttpRequest = () => {
         const xhr = new originalXHR;
         let url;
         const originalOpen = xhr.open;
-        xhr.open = function(method, requestUrl, ...args) {
+        xhr.open = function(_method, requestUrl, ...rest) {
           url = requestUrl;
-          return originalOpen.apply(this, arguments);
+          return originalOpen.apply(this, [_method, requestUrl, ...rest]);
         };
         const originalSend = xhr.send;
         xhr.send = function(...args) {
@@ -73,86 +68,35 @@
               }
             });
           }
-          return originalSend.apply(this, arguments);
+          return originalSend.apply(this, args);
         };
         return xhr;
       };
     }
   }
 
-  // src/enhancers/uber.ts
-  class UberEnhancer extends SiteEnhancer {
-    siteName = "Uber Eats";
-    cardInfo = {};
-    dataProcessed = false;
-    processedCardIds = new Set;
-    lastHref = "";
+  // src/enhancers/amex.ts
+  class AmexEnhancer extends SiteEnhancer {
+    siteName = "Amex Travel";
+    processed = false;
     shouldActivate() {
-      return window.location.hostname.includes("ubereats.com");
+      return window.location.hostname.includes("travel.americanexpress.com") && window.location.pathname.includes("book/accommodations/checkout");
     }
-    setupInterceptor() {
-      this.interceptXHR((url) => url.startsWith("https://payments.ubereats.com/_api/payment-profiles"), (data) => {
-        if (!this.dataProcessed) {
-          this.processApiData(data);
-          this.dataProcessed = true;
-        }
-      });
-    }
+    setupInterceptor() {}
     updatePage() {
-      const currentHref = window.location.href;
-      if (currentHref !== this.lastHref) {
-        this.processedCardIds.clear();
-        this.lastHref = currentHref;
-      }
-      const paymentHeader = Array.from(document.querySelectorAll("div, span, p")).find((el) => el.textContent?.trim() === "Payment" || el.textContent?.trim() === "付款方式");
-      if (paymentHeader && this.dataProcessed) {
-        const parentContainer = paymentHeader.parentElement;
-        if (parentContainer) {
-          const cardLabels = parentContainer.querySelectorAll("label");
-          cardLabels.forEach((label) => {
-            const cardId = label.getAttribute("for");
-            if (cardId && !this.processedCardIds.has(cardId)) {
-              const cardInput = document.getElementById(cardId);
-              const cardUUID = cardInput ? cardInput.value : null;
-              if (cardUUID && this.cardInfo[cardUUID]) {
-                const info = this.cardInfo[cardUUID];
-                const cardImage = label.querySelector("img");
-                let cardInfoDiv = null;
-                if (cardImage) {
-                  let sibling = cardImage.nextElementSibling;
-                  while (sibling) {
-                    if (sibling.tagName === "DIV" && sibling.textContent?.includes("••••")) {
-                      cardInfoDiv = sibling;
-                      break;
-                    }
-                    sibling = sibling.nextElementSibling;
-                  }
-                }
-                if (cardInfoDiv) {
-                  const originalText = cardInfoDiv.textContent?.trim();
-                  if (originalText && !originalText.includes(info.bin)) {
-                    cardInfoDiv.textContent = `${info.cardType} ${info.bin} ${info.last4} (${info.expiration})`;
-                    this.processedCardIds.add(cardId);
-                  }
-                }
-              }
-            }
-          });
-        }
-      }
-    }
-    processApiData(data) {
-      if (data && data.availablePaymentProfiles) {
-        data.availablePaymentProfiles.forEach((profile) => {
-          if (profile.uuid && profile.cardNumber && profile.cardExpiration) {
-            this.cardInfo[profile.uuid] = {
-              cardType: profile.cardType,
-              bin: profile.cardBin,
-              last4: "••••" + profile.cardNumber,
-              expiration: profile.cardExpiration
-            };
-          }
+      if (this.processed)
+        return;
+      const selectElement = document.querySelector('select[data-testid="card-payment-select-input"]');
+      if (selectElement) {
+        const options = selectElement.querySelectorAll("option");
+        if (options.length === 0)
+          return;
+        options.forEach((option) => {
+          const match = option.textContent?.match(/\(.*\)/);
+          const parenthesesText = match ? ` ${match[0]}` : "";
+          option.textContent = option.value + parenthesesText;
         });
+        this.processed = true;
       }
     }
   }
@@ -254,7 +198,7 @@
           const depositElement = document.createElement("span");
           depositElement.className = "deposit-info";
           depositElement.style.cssText = "color: #e63946; font-weight: 500; margin-left: 8px; font-size: 14px;";
-          if (depositInfo && depositInfo.hasDeposit) {
+          if (depositInfo?.hasDeposit) {
             depositElement.textContent = "Require Deposit";
           } else {
             depositElement.textContent = "No Deposit";
@@ -265,17 +209,17 @@
       });
     }
     processSearchData(data) {
-      if (data && data.search && data.search.hits) {
+      if (data?.search?.hits) {
         this.venueDeposits.clear();
         data.search.hits.forEach((result, index) => {
-          if (result.id && result.id.resy) {
+          if (result.id?.resy) {
             let hasDeposit = false;
             let depositFee = null;
-            if (result.availability && result.availability.templates) {
+            if (result.availability?.templates) {
               const templates = result.availability.templates;
               for (const templateId in templates) {
                 const template = templates[templateId];
-                if (template && template.deposit_fee && template.deposit_fee > 0) {
+                if (template?.deposit_fee && template.deposit_fee > 0) {
                   hasDeposit = true;
                   depositFee = template.deposit_fee;
                   break;
@@ -294,32 +238,6 @@
     }
   }
 
-  // src/enhancers/amex.ts
-  class AmexEnhancer extends SiteEnhancer {
-    siteName = "Amex Travel";
-    processed = false;
-    shouldActivate() {
-      return window.location.hostname.includes("travel.americanexpress.com") && window.location.pathname.includes("book/accommodations/checkout");
-    }
-    setupInterceptor() {}
-    updatePage() {
-      if (this.processed)
-        return;
-      const selectElement = document.querySelector('select[data-testid="card-payment-select-input"]');
-      if (selectElement) {
-        const options = selectElement.querySelectorAll("option");
-        if (options.length === 0)
-          return;
-        options.forEach((option) => {
-          const match = option.textContent?.match(/\(.*\)/);
-          const parenthesesText = match ? ` ${match[0]}` : "";
-          option.textContent = option.value + parenthesesText;
-        });
-        this.processed = true;
-      }
-    }
-  }
-
   // src/enhancers/saks.ts
   class SaksEnhancer extends SiteEnhancer {
     siteName = "Saks Fifth Avenue";
@@ -334,6 +252,83 @@
     }
   }
 
+  // src/enhancers/uber.ts
+  class UberEnhancer extends SiteEnhancer {
+    siteName = "Uber Eats";
+    cardInfo = {};
+    dataProcessed = false;
+    processedCardIds = new Set;
+    lastHref = "";
+    shouldActivate() {
+      return window.location.hostname.includes("ubereats.com");
+    }
+    setupInterceptor() {
+      this.interceptXHR((url) => url.startsWith("https://payments.ubereats.com/_api/payment-profiles"), (data) => {
+        if (!this.dataProcessed) {
+          this.processApiData(data);
+          this.dataProcessed = true;
+        }
+      });
+    }
+    updatePage() {
+      const currentHref = window.location.href;
+      if (currentHref !== this.lastHref) {
+        this.processedCardIds.clear();
+        this.lastHref = currentHref;
+      }
+      const paymentHeader = Array.from(document.querySelectorAll("div, span, p")).find((el) => el.textContent?.trim() === "Payment" || el.textContent?.trim() === "付款方式");
+      if (paymentHeader && this.dataProcessed) {
+        const parentContainer = paymentHeader.parentElement;
+        if (parentContainer) {
+          const cardLabels = parentContainer.querySelectorAll("label");
+          cardLabels.forEach((label) => {
+            const cardId = label.getAttribute("for");
+            if (cardId && !this.processedCardIds.has(cardId)) {
+              const cardInput = document.getElementById(cardId);
+              const cardUUID = cardInput ? cardInput.value : null;
+              if (cardUUID && this.cardInfo[cardUUID]) {
+                const info = this.cardInfo[cardUUID];
+                const cardImage = label.querySelector("img");
+                let cardInfoDiv = null;
+                if (cardImage) {
+                  let sibling = cardImage.nextElementSibling;
+                  while (sibling) {
+                    if (sibling.tagName === "DIV" && sibling.textContent?.includes("••••")) {
+                      cardInfoDiv = sibling;
+                      break;
+                    }
+                    sibling = sibling.nextElementSibling;
+                  }
+                }
+                if (cardInfoDiv) {
+                  const originalText = cardInfoDiv.textContent?.trim();
+                  if (originalText && !originalText.includes(info.bin)) {
+                    cardInfoDiv.textContent = `${info.cardType} ${info.bin} ${info.last4} (${info.expiration})`;
+                    this.processedCardIds.add(cardId);
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+    }
+    processApiData(data) {
+      if (data?.availablePaymentProfiles) {
+        data.availablePaymentProfiles.forEach((profile) => {
+          if (profile.uuid && profile.cardNumber && profile.cardExpiration) {
+            this.cardInfo[profile.uuid] = {
+              cardType: profile.cardType,
+              bin: profile.cardBin,
+              last4: `••••${profile.cardNumber}`,
+              expiration: profile.cardExpiration
+            };
+          }
+        });
+      }
+    }
+  }
+
   // src/index.ts
   function init() {
     const enhancers = [
@@ -342,7 +337,9 @@
       new AmexEnhancer,
       new SaksEnhancer
     ];
-    enhancers.forEach((enhancer) => enhancer.init());
+    for (const enhancer of enhancers) {
+      enhancer.init();
+    }
   }
   init();
 })();
