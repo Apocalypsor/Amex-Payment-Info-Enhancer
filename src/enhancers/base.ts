@@ -48,30 +48,18 @@ export abstract class SiteEnhancer {
   }
 
   /**
-   * Setup MutationObserver to watch for DOM changes
+   * Poll for DOM changes at a fixed interval
    */
   protected observeDOM(): void {
-    if (document.body) {
-      const observer = new MutationObserver(() => this.checkAndActivate());
-      observer.observe(document.body, { childList: true, subtree: true });
-
-      // Run once on load
+    const start = () => {
       this.checkAndActivate();
-    } else {
-      document.addEventListener(
-        "DOMContentLoaded",
-        () => {
-          const observer = new MutationObserver(() => this.checkAndActivate());
-          observer.observe(document.body, {
-            childList: true,
-            subtree: true,
-          });
+      setInterval(() => this.checkAndActivate(), 1000);
+    };
 
-          // Run once on load
-          this.checkAndActivate();
-        },
-        { once: true },
-      );
+    if (document.body) {
+      start();
+    } else {
+      document.addEventListener("DOMContentLoaded", start, { once: true });
     }
   }
 
