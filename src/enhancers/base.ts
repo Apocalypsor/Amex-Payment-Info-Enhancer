@@ -3,6 +3,73 @@
  * Each site (Uber, Resy, Amex, Saks) extends this class and implements
  * the required methods for XHR interception and DOM updates
  */
+type XHRInterceptor = {
+  urlMatcher: (url: string) => boolean;
+  onResponse: (data: any) => void;
+};
+
+const xhrInterceptors: XHRInterceptor[] = [];
+const requestUrls = new WeakMap<XMLHttpRequest, string>();
+let xhrPatchInstalled = false;
+
+function installXHRPatch(): void {
+  if (xhrPatchInstalled) {
+    return;
+  }
+
+  xhrPatchInstalled = true;
+
+  const originalOpen = XMLHttpRequest.prototype.open;
+  const originalSend = XMLHttpRequest.prototype.send;
+
+  XMLHttpRequest.prototype.open = function (
+    method: string,
+    requestUrl: string | URL,
+    ...rest: any[]
+  ) {
+    requestUrls.set(this, String(requestUrl));
+    const async = typeof rest[0] === "boolean" ? rest[0] : true;
+    return originalOpen.apply(this, [
+      method,
+      requestUrl,
+      async,
+      rest[1],
+      rest[2],
+    ] as [string, string | URL, boolean, string?, string?]);
+  };
+
+  XMLHttpRequest.prototype.send = function (
+    this: XMLHttpRequest,
+    ...args: any[]
+  ) {
+    const url = requestUrls.get(this);
+
+    if (url) {
+      for (const interceptor of xhrInterceptors) {
+        if (!interceptor.urlMatcher(url)) {
+          continue;
+        }
+
+        this.addEventListener("load", function () {
+          if (this.readyState === 4 && this.status === 200) {
+            try {
+              const responseData = JSON.parse(this.responseText);
+              interceptor.onResponse(responseData);
+            } catch (error) {
+              console.error("Error parsing API response:", error);
+            }
+          }
+        });
+      }
+    }
+
+    return originalSend.apply(
+      this,
+      args as [body?: Document | XMLHttpRequestBodyInit | null],
+    );
+  };
+}
+
 export abstract class SiteEnhancer {
   protected abstract siteName: string;
   private interceptorSetup = false;
@@ -70,47 +137,7 @@ export abstract class SiteEnhancer {
     urlMatcher: (url: string) => boolean,
     onResponse: (data: any) => void,
   ): void {
-    const originalXHR = window.XMLHttpRequest;
-    (window.XMLHttpRequest as any) = () => {
-      const xhr = new originalXHR();
-      let url: string;
-      const originalOpen = xhr.open;
-
-      xhr.open = function (
-        _method: string,
-        requestUrl: string,
-        ...rest: any[]
-      ) {
-        url = requestUrl;
-        return originalOpen.apply(this, [_method, requestUrl, ...rest] as [
-          string,
-          string | URL,
-          boolean,
-          string?,
-          string?,
-        ]);
-      };
-
-      const originalSend = xhr.send;
-      xhr.send = function (...args: any[]) {
-        if (url && urlMatcher(url)) {
-          xhr.addEventListener("load", function (this: XMLHttpRequest) {
-            if (this.readyState === 4 && this.status === 200) {
-              try {
-                const responseData = JSON.parse(this.responseText);
-                onResponse(responseData);
-              } catch (e) {
-                console.error("Error parsing API response:", e);
-              }
-            }
-          });
-        }
-        return originalSend.apply(
-          this,
-          args as [body?: Document | XMLHttpRequestBodyInit | null],
-        );
-      };
-      return xhr;
-    };
+    xhrInterceptors.push({ urlMatcher, onResponse });
+    installXHRPatch();
   }
 }
