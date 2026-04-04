@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Amex Payment Info Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      5.0.1
+// @version      5.0.2
 // @description  Shows last 5 digits of Amex cards
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
@@ -19,6 +19,50 @@
   "use strict";
 (() => {
   // src/enhancers/base.ts
+  var xhrInterceptors = [];
+  var requestUrls = new WeakMap;
+  var xhrPatchInstalled = false;
+  function installXHRPatch() {
+    if (xhrPatchInstalled) {
+      return;
+    }
+    xhrPatchInstalled = true;
+    const originalOpen = XMLHttpRequest.prototype.open;
+    const originalSend = XMLHttpRequest.prototype.send;
+    XMLHttpRequest.prototype.open = function(method, requestUrl, ...rest) {
+      requestUrls.set(this, String(requestUrl));
+      const async = typeof rest[0] === "boolean" ? rest[0] : true;
+      return originalOpen.apply(this, [
+        method,
+        requestUrl,
+        async,
+        rest[1],
+        rest[2]
+      ]);
+    };
+    XMLHttpRequest.prototype.send = function(...args) {
+      const url = requestUrls.get(this);
+      if (url) {
+        for (const interceptor of xhrInterceptors) {
+          if (!interceptor.urlMatcher(url)) {
+            continue;
+          }
+          this.addEventListener("load", function() {
+            if (this.readyState === 4 && this.status === 200) {
+              try {
+                const responseData = JSON.parse(this.responseText);
+                interceptor.onResponse(responseData);
+              } catch (error) {
+                console.error("Error parsing API response:", error);
+              }
+            }
+          });
+        }
+      }
+      return originalSend.apply(this, args);
+    };
+  }
+
   class SiteEnhancer {
     interceptorSetup = false;
     init() {
@@ -45,33 +89,8 @@
       }
     }
     interceptXHR(urlMatcher, onResponse) {
-      const originalXHR = window.XMLHttpRequest;
-      window.XMLHttpRequest = () => {
-        const xhr = new originalXHR;
-        let url;
-        const originalOpen = xhr.open;
-        xhr.open = function(_method, requestUrl, ...rest) {
-          url = requestUrl;
-          return originalOpen.apply(this, [_method, requestUrl, ...rest]);
-        };
-        const originalSend = xhr.send;
-        xhr.send = function(...args) {
-          if (url && urlMatcher(url)) {
-            xhr.addEventListener("load", function() {
-              if (this.readyState === 4 && this.status === 200) {
-                try {
-                  const responseData = JSON.parse(this.responseText);
-                  onResponse(responseData);
-                } catch (e) {
-                  console.error("Error parsing API response:", e);
-                }
-              }
-            });
-          }
-          return originalSend.apply(this, args);
-        };
-        return xhr;
-      };
+      xhrInterceptors.push({ urlMatcher, onResponse });
+      installXHRPatch();
     }
   }
 
