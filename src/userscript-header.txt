@@ -6,7 +6,9 @@
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
 // @match        https://www.ubereats.com/*
+// @match        https://www.ubereats.com/
 // @match        https://resy.com/*
+// @match        https://resy.com/
 // @match        https://widgets.resy.com/*
 // @match        https://www.saksfifthavenue.com/*
 // @grant        none

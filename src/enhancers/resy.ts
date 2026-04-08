@@ -9,7 +9,6 @@ import { SiteEnhancer } from "./base";
 export class ResyEnhancer extends SiteEnhancer {
   protected siteName = "Resy";
   private paymentInfo: ResyPaymentMethod[] | null = null;
-  private dataProcessed = false;
   private venueDeposits = new Map<number, ResyDepositInfo>();
 
   shouldActivate(): boolean {
@@ -20,21 +19,16 @@ export class ResyEnhancer extends SiteEnhancer {
   }
 
   setupInterceptor(): void {
-    const path = window.location.pathname;
-
-    if (
-      window.location.hostname === "resy.com" &&
-      path.startsWith("/account/payment-methods")
-    ) {
+    if (window.location.hostname === "resy.com") {
       this.setupAccountInterceptor();
-    } else if (
-      window.location.hostname === "resy.com" &&
-      path.startsWith("/cities/")
-    ) {
       this.setupSearchInterceptor();
     } else if (window.location.hostname === "widgets.resy.com") {
       this.setupWidgetInterceptor();
     }
+  }
+
+  protected override onPathChange(): void {
+    this.venueDeposits.clear();
   }
 
   updatePage(): void {
@@ -59,9 +53,8 @@ export class ResyEnhancer extends SiteEnhancer {
     this.interceptXHR(
       (url) => url.startsWith("https://api.resy.com/2/user"),
       (data: ResyUserResponse) => {
-        if (!this.dataProcessed && data && data.payment_methods) {
+        if (data?.payment_methods) {
           this.paymentInfo = data.payment_methods;
-          this.dataProcessed = true;
         }
       },
     );
@@ -71,9 +64,8 @@ export class ResyEnhancer extends SiteEnhancer {
     this.interceptXHR(
       (url) => url.startsWith("https://api.resy.com/2/user"),
       (data: ResyUserResponse) => {
-        if (!this.dataProcessed && data && data.payment_methods) {
+        if (data?.payment_methods) {
           this.paymentInfo = data.payment_methods;
-          this.dataProcessed = true;
         }
       },
     );
@@ -89,7 +81,7 @@ export class ResyEnhancer extends SiteEnhancer {
   }
 
   private updateAccountPage(): void {
-    if (this.paymentInfo && this.dataProcessed) {
+    if (this.paymentInfo) {
       const paymentContainers = document.querySelectorAll(
         ".AccountPaymentMethodRow",
       );
@@ -115,7 +107,7 @@ export class ResyEnhancer extends SiteEnhancer {
   }
 
   private updateWidgetPage(): void {
-    if (!this.paymentInfo || !this.dataProcessed) return;
+    if (!this.paymentInfo) return;
 
     const selectElement = document.querySelector(
       "select#payment_method",

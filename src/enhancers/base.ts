@@ -73,10 +73,11 @@ function installXHRPatch(): void {
 export abstract class SiteEnhancer {
   protected abstract siteName: string;
   private interceptorSetup = false;
+  private lastPath = "";
 
   /**
    * Setup XHR interceptors for this site
-   * Called once during initialization
+   * Called once per hostname — register all interceptors needed for this host
    */
   abstract setupInterceptor(): void;
 
@@ -92,6 +93,12 @@ export abstract class SiteEnhancer {
   abstract shouldActivate(): boolean;
 
   /**
+   * Called when the pathname changes while the enhancer is active.
+   * Override to reset state flags (e.g. dataProcessed).
+   */
+  protected onPathChange(): void {}
+
+  /**
    * Initialize the enhancer
    * Sets up interceptor and starts observing DOM changes
    */
@@ -105,11 +112,17 @@ export abstract class SiteEnhancer {
    */
   private checkAndActivate(): void {
     if (this.shouldActivate()) {
-      // Setup interceptor on first activation
       if (!this.interceptorSetup) {
         this.setupInterceptor();
         this.interceptorSetup = true;
       }
+
+      const currentPath = window.location.pathname;
+      if (this.lastPath && this.lastPath !== currentPath) {
+        this.onPathChange();
+      }
+      this.lastPath = currentPath;
+
       this.updatePage();
     }
   }

@@ -15,6 +15,10 @@ export class AmexEnhancer extends SiteEnhancer {
     // Amex doesn't need XHR interception
   }
 
+  protected override onPathChange(): void {
+    this.processed = false;
+  }
+
   updatePage(): void {
     if (this.processed) return; // Run only once
 

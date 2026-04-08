@@ -6,7 +6,6 @@ export class UberEnhancer extends SiteEnhancer {
   private cardInfo: Record<string, UberCardInfo> = {};
   private dataProcessed = false;
   private processedCardIds = new Set<string>();
-  private lastHref = "";
 
   shouldActivate(): boolean {
     return window.location.hostname.includes("ubereats.com");
@@ -25,14 +24,11 @@ export class UberEnhancer extends SiteEnhancer {
     );
   }
 
-  updatePage(): void {
-    // Reset processed cards if navigating to a new page
-    const currentHref = window.location.href;
-    if (currentHref !== this.lastHref) {
-      this.processedCardIds.clear();
-      this.lastHref = currentHref;
-    }
+  protected override onPathChange(): void {
+    this.processedCardIds.clear();
+  }
 
+  updatePage(): void {
     const paymentHeader = Array.from(
       document.querySelectorAll("div, span, p"),
     ).find(
