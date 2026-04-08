@@ -1,12 +1,14 @@
 // ==UserScript==
 // @name         Amex Payment Info Enhancer
 // @namespace    http://tampermonkey.net/
-// @version      5.0.2
+// @version      5.0.3
 // @description  Shows last 5 digits of Amex cards
 // @author       Apocalypsor
 // @match        https://www.travel.americanexpress.com/en-us/book/accommodations/*
 // @match        https://www.ubereats.com/*
+// @match        https://www.ubereats.com/
 // @match        https://resy.com/*
+// @match        https://resy.com/
 // @match        https://widgets.resy.com/*
 // @match        https://www.saksfifthavenue.com/*
 // @grant        none
@@ -65,6 +67,8 @@
 
   class SiteEnhancer {
     interceptorSetup = false;
+    lastPath = "";
+    onPathChange() {}
     init() {
       this.observeDOM();
     }
@@ -74,6 +78,11 @@
           this.setupInterceptor();
           this.interceptorSetup = true;
         }
+        const currentPath = window.location.pathname;
+        if (this.lastPath && this.lastPath !== currentPath) {
+          this.onPathChange();
+        }
+        this.lastPath = currentPath;
         this.updatePage();
       }
     }
@@ -102,6 +111,9 @@
       return window.location.hostname.includes("travel.americanexpress.com") && window.location.pathname.includes("book/accommodations/checkout");
     }
     setupInterceptor() {}
+    onPathChange() {
+      this.processed = false;
+    }
     updatePage() {
       if (this.processed)
         return;
@@ -124,20 +136,20 @@
   class ResyEnhancer extends SiteEnhancer {
     siteName = "Resy";
     paymentInfo = null;
-    dataProcessed = false;
     venueDeposits = new Map;
     shouldActivate() {
       return window.location.hostname === "resy.com" || window.location.hostname === "widgets.resy.com";
     }
     setupInterceptor() {
-      const path = window.location.pathname;
-      if (window.location.hostname === "resy.com" && path.startsWith("/account/payment-methods")) {
+      if (window.location.hostname === "resy.com") {
         this.setupAccountInterceptor();
-      } else if (window.location.hostname === "resy.com" && path.startsWith("/cities/")) {
         this.setupSearchInterceptor();
       } else if (window.location.hostname === "widgets.resy.com") {
         this.setupWidgetInterceptor();
       }
+    }
+    onPathChange() {
+      this.venueDeposits.clear();
     }
     updatePage() {
       const path = window.location.pathname;
@@ -151,17 +163,15 @@
     }
     setupAccountInterceptor() {
       this.interceptXHR((url) => url.startsWith("https://api.resy.com/2/user"), (data) => {
-        if (!this.dataProcessed && data && data.payment_methods) {
+        if (data?.payment_methods) {
           this.paymentInfo = data.payment_methods;
-          this.dataProcessed = true;
         }
       });
     }
     setupWidgetInterceptor() {
       this.interceptXHR((url) => url.startsWith("https://api.resy.com/2/user"), (data) => {
-        if (!this.dataProcessed && data && data.payment_methods) {
+        if (data?.payment_methods) {
           this.paymentInfo = data.payment_methods;
-          this.dataProcessed = true;
         }
       });
     }
@@ -171,7 +181,7 @@
       });
     }
     updateAccountPage() {
-      if (this.paymentInfo && this.dataProcessed) {
+      if (this.paymentInfo) {
         const paymentContainers = document.querySelectorAll(".AccountPaymentMethodRow");
         if (paymentContainers.length === this.paymentInfo.length) {
           this.paymentInfo.forEach((foundPayment, index) => {
@@ -189,7 +199,7 @@
       }
     }
     updateWidgetPage() {
-      if (!this.paymentInfo || !this.dataProcessed)
+      if (!this.paymentInfo)
         return;
       const selectElement = document.querySelector("select#payment_method");
       if (!selectElement)
@@ -277,7 +287,6 @@
     cardInfo = {};
     dataProcessed = false;
     processedCardIds = new Set;
-    lastHref = "";
     shouldActivate() {
       return window.location.hostname.includes("ubereats.com");
     }
@@ -289,12 +298,10 @@
         }
       });
     }
+    onPathChange() {
+      this.processedCardIds.clear();
+    }
     updatePage() {
-      const currentHref = window.location.href;
-      if (currentHref !== this.lastHref) {
-        this.processedCardIds.clear();
-        this.lastHref = currentHref;
-      }
       const paymentHeader = Array.from(document.querySelectorAll("div, span, p")).find((el) => el.textContent?.trim() === "Payment" || el.textContent?.trim() === "付款方式");
       if (paymentHeader && this.dataProcessed) {
         const parentContainer = paymentHeader.parentElement;
