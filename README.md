@@ -41,13 +41,19 @@ Each enhancer implements:
 
 ### Prerequisites
 
-- [Bun](https://bun.sh) runtime
+- [Bun](https://bun.sh) 1.4.3 or later (includes native TypeScript checking)
 
 ### Setup
 
 ```bash
 # Install dependencies
 bun install
+
+# Check TypeScript types (also available as bun run typecheck)
+bun check
+
+# Format and lint with Biome
+bun run lint
 
 # Build userscript
 bun run build
